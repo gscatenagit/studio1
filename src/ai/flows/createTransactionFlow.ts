@@ -12,7 +12,7 @@ import { z } from 'genkit';
 import { collection, addDoc } from "firebase/firestore";
 import { db } from '@/lib/firebase';
 
-export const CreateTransactionInputSchema = z.object({
+const CreateTransactionInputSchema = z.object({
   userId: z.string(),
   description: z.string(),
   amount: z.number(),
@@ -23,7 +23,7 @@ export const CreateTransactionInputSchema = z.object({
 });
 export type CreateTransactionInput = z.infer<typeof CreateTransactionInputSchema>;
 
-export const CreateTransactionOutputSchema = z.object({
+const CreateTransactionOutputSchema = z.object({
   transactionId: z.string(),
 });
 export type CreateTransactionOutput = z.infer<typeof CreateTransactionOutputSchema>;
