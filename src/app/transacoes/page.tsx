@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -5,8 +8,11 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, FileDown, ArrowDown, ArrowUp } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AddTransactionForm } from "@/components/add-transaction-form";
+import { format } from "date-fns";
 
-const transactions = [
+const initialTransactions = [
   { id: 1, date: "15/07/2024", description: "Salário Parceiro B", category: "Salário", type: "Receita", amount: "R$ 5.000,00" },
   { id: 2, date: "14/07/2024", description: "Supermercado", category: "Alimentação", type: "Despesa", amount: "R$ 450,30" },
   { id: 3, date: "13/07/2024", description: "Aluguel", category: "Moradia", type: "Despesa", amount: "R$ 2.500,00" },
@@ -16,6 +22,18 @@ const transactions = [
 ];
 
 export default function TransacoesPage() {
+  const [transactions, setTransactions] = useState(initialTransactions);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const handleTransactionAdded = (newTransaction: any) => {
+    const newId = transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1;
+    const formattedAmount = `R$ ${parseFloat(newTransaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
+    const formattedDate = format(newTransaction.date, "dd/MM/yyyy");
+
+    setTransactions([{ ...newTransaction, id: newId, amount: formattedAmount, date: formattedDate }, ...transactions]);
+    setIsDialogOpen(false);
+  };
+
   return (
     <div className="flex flex-col gap-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -28,10 +46,23 @@ export default function TransacoesPage() {
             <FileDown className="mr-2 h-4 w-4" />
             Exportar
           </Button>
-          <Button>
-            <PlusCircle className="mr-2 h-4 w-4" />
-            Nova Transação
-          </Button>
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Nova Transação
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[480px]">
+              <DialogHeader>
+                <DialogTitle>Adicionar Nova Transação</DialogTitle>
+                <DialogDescription>
+                  Preencha as informações abaixo para adicionar uma nova transação.
+                </DialogDescription>
+              </DialogHeader>
+              <AddTransactionForm onTransactionAdded={handleTransactionAdded} />
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
