@@ -1,29 +1,47 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlusCircle } from "lucide-react";
 import { AddAccountForm } from "@/components/add-account-form";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
 
-const initialAccounts = [
-  { id: 1, name: "Conta Corrente A", bank: "Banco X", type: "Corrente", balance: "R$ 5.432,10" },
-  { id: 2, name: "Poupança A", bank: "Banco X", type: "Poupança", balance: "R$ 2.109,80" },
-  { id: 3, name: "Conta Corrente B", bank: "Banco Y", type: "Corrente", balance: "R$ 3.890,15" },
-  { id: 4, name: "Investimentos", bank: "Corretora Z", type: "Investimento", balance: "R$ 10.500,00" },
-];
+interface Account {
+  id: string;
+  name: string;
+  bank: string;
+  type: string;
+  balance: number;
+}
 
 export default function ContasPage() {
-  const [accounts, setAccounts] = useState(initialAccounts);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const handleAccountAdded = (newAccount: any) => {
-    const newId = accounts.length > 0 ? Math.max(...accounts.map(a => a.id)) + 1 : 1;
-    const formattedBalance = `R$ ${parseFloat(newAccount.balance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    setAccounts([...accounts, { ...newAccount, id: newId, balance: formattedBalance }]);
-    setIsDialogOpen(false); // Close the dialog
+  useEffect(() => {
+    const q = query(collection(db, "accounts"), orderBy("name"));
+    const unsubscribe = onSnapshot(q, (querySnapshot) => {
+      const accountsData: Account[] = [];
+      querySnapshot.forEach((doc) => {
+        accountsData.push({ id: doc.id, ...doc.data() } as Account);
+      });
+      setAccounts(accountsData);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  const handleAccountAdded = async (newAccount: Omit<Account, 'id'>) => {
+    try {
+      await addDoc(collection(db, "accounts"), newAccount);
+      setIsDialogOpen(false);
+    } catch (error) {
+      console.error("Error adding document: ", error);
+    }
   };
 
   return (
@@ -35,7 +53,7 @@ export default function ContasPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
               Adicionar Conta
             </Button>
@@ -73,7 +91,9 @@ export default function ContasPage() {
                   <TableCell className="font-medium">{account.name}</TableCell>
                   <TableCell>{account.bank}</TableCell>
                   <TableCell>{account.type}</TableCell>
-                  <TableCell className="text-right font-medium">{account.balance}</TableCell>
+                  <TableCell className="text-right font-medium">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(account.balance)}
+                  </TableCell>
                 </TableRow>
               ))}
             </TableBody>

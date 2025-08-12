@@ -34,8 +34,9 @@ const formSchema = z.object({
   type: z.enum(["Corrente", "Poupança", "Investimento"], {
     required_error: "Você precisa selecionar um tipo de conta.",
   }),
-  balance: z.string().refine(val => !isNaN(parseFloat(val)), {
-    message: "O saldo deve ser um número.",
+  balance: z.coerce.number({
+    required_error: "O saldo inicial é obrigatório.",
+    invalid_type_error: "O saldo deve ser um número.",
   }),
 });
 
@@ -49,11 +50,11 @@ export function AddAccountForm({ onAccountAdded }: AddAccountFormProps) {
     defaultValues: {
       name: "",
       bank: "",
+      balance: 0,
     },
   });
 
   function onSubmit(values: z.infer<typeof formSchema>) {
-    console.log(values);
     onAccountAdded(values);
     form.reset();
   }
@@ -117,7 +118,7 @@ export function AddAccountForm({ onAccountAdded }: AddAccountFormProps) {
               <FormItem>
                 <FormLabel>Saldo Inicial</FormLabel>
                 <FormControl>
-                  <Input type="number" placeholder="R$ 0,00" {...field} />
+                  <Input type="number" step="0.01" placeholder="R$ 0,00" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
