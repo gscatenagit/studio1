@@ -1,16 +1,18 @@
+
 "use client"
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts"
 import { ChartTooltipContent, ChartContainer } from "@/components/ui/chart"
+import { useEffect, useState } from "react";
 
-const data = [
-  { month: "Jan", total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: "Fev", total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: "Mar", total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: "Abr", total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: "Mai", total: Math.floor(Math.random() * 5000) + 1000 },
-  { month: "Jun", total: Math.floor(Math.random() * 5000) + 1000 },
-]
+const staticData = [
+  { month: "Jan", total: 2500 },
+  { month: "Fev", total: 3000 },
+  { month: "Mar", total: 2000 },
+  { month: "Abr", total: 2780 },
+  { month: "Mai", total: 1890 },
+  { month: "Jun", total: 2390 },
+];
 
 const chartConfig = {
   total: {
@@ -19,12 +21,24 @@ const chartConfig = {
   },
 };
 
+interface VisaoGeralChartProps {
+    data?: { month: string; total: number }[];
+}
 
-export function VisaoGeralChart() {
+export function VisaoGeralChart({ data: propData }: VisaoGeralChartProps) {
+  const [chartData, setChartData] = useState(staticData);
+
+  useEffect(() => {
+    if (propData && propData.length > 0) {
+      setChartData(propData);
+    }
+  }, [propData]);
+
+
   return (
     <ChartContainer config={chartConfig} className="h-[250px] w-full">
       <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={data} margin={{ top: 20, right: 20, bottom: 20, left: -10 }}>
+        <BarChart data={chartData} margin={{ top: 20, right: 20, bottom: 20, left: -10 }}>
           <XAxis
             dataKey="month"
             stroke="#888888"
@@ -37,12 +51,12 @@ export function VisaoGeralChart() {
             fontSize={12}
             tickLine={false}
             axisLine={false}
-            tickFormatter={(value) => `R$${value / 1000}k`}
+            tickFormatter={(value) => `R$${Number(value) / 1000}k`}
           />
            <Tooltip
             cursor={false}
             content={<ChartTooltipContent
-              formatter={(value) => `R$ ${value.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
+              formatter={(value) => `R$ ${Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
               indicator="dot"
             />}
           />
