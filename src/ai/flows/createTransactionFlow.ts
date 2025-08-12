@@ -7,6 +7,7 @@
  * - CreateTransactionOutput - The return type for the createTransaction function.
  */
 
+import '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
 import { getFirestore } from 'firebase-admin/firestore';
