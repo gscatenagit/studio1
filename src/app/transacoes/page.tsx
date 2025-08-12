@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -16,6 +16,7 @@ import { collection, onSnapshot, query, where, orderBy, doc, getDoc, Timestamp }
 import { getAuth } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { createTransaction, type AddTransactionFormValues } from "@/services/transactionService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Transaction {
   id: string;
@@ -34,78 +35,7 @@ interface Account {
   name: string;
 }
 
-export default function TransacoesPage() {
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [accounts, setAccounts] = useState<Account[]>([]);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const auth = getAuth();
-  const user = auth.currentUser;
-  const { toast } = useToast();
-
-  useEffect(() => {
-    if (user) {
-      // Subscribe to accounts
-      const accountsQuery = query(collection(db, "accounts"), where("userId", "==", user.uid));
-      const unsubscribeAccounts = onSnapshot(accountsQuery, (querySnapshot) => {
-        const accountsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
-        setAccounts(accountsData);
-      });
-
-      // Subscribe to transactions
-      const transactionsQuery = query(
-        collection(db, "transactions"),
-        where("userId", "==", user.uid),
-        orderBy("date", "desc")
-      );
-      
-      const unsubscribeTransactions = onSnapshot(transactionsQuery, async (querySnapshot) => {
-        const transactionsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
-          const data = docSnapshot.data();
-          let accountName = 'Conta Deletada';
-          if (data.accountId) {
-            try {
-              const accountDoc = await getDoc(doc(db, "accounts", data.accountId));
-              if (accountDoc.exists()) {
-                accountName = accountDoc.data().name;
-              }
-            } catch (error) {
-              console.error("Error fetching account name:", error);
-            }
-          }
-          return { id: docSnapshot.id, ...data, accountName } as Transaction;
-        }));
-        setTransactions(transactionsData);
-      });
-
-      // Cleanup subscriptions on unmount
-      return () => {
-        unsubscribeAccounts();
-        unsubscribeTransactions();
-      };
-    }
-  }, [user]);
-
-  const handleTransactionAdded = async (values: AddTransactionFormValues) => {
-    if (user) {
-      try {
-        await createTransaction(user.uid, values);
-        setIsDialogOpen(false);
-        toast({
-          title: "Sucesso!",
-          description: "Transação adicionada.",
-        });
-      } catch (error) {
-        console.error("Error adding document: ", error);
-        toast({
-          variant: "destructive",
-          title: "Erro ao criar transação",
-          description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
-        });
-      }
-    }
-  };
-
-  const formatDate = (date: Timestamp | Date): string => {
+const formatDate = (date: Timestamp | Date): string => {
     if (date instanceof Date) {
       return format(date, "dd/MM/yyyy");
     }
@@ -113,7 +43,110 @@ export default function TransacoesPage() {
       return format(date.toDate(), "dd/MM/yyyy");
     }
     return "Data inválida";
+};
+
+export default function TransacoesPage() {
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  
+  const [descriptionFilter, setDescriptionFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+
+
+  const auth = getAuth();
+  const user = auth.currentUser;
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      setLoading(true);
+      const accountsQuery = query(collection(db, "accounts"), where("userId", "==", user.uid));
+      const unsubscribeAccounts = onSnapshot(accountsQuery, (querySnapshot) => {
+        const accountsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
+        setAccounts(accountsData);
+      });
+
+      const transactionsQuery = query(
+        collection(db, "transactions"),
+        where("userId", "==", user.uid),
+        orderBy("date", "desc")
+      );
+      
+      const unsubscribeTransactions = onSnapshot(transactionsQuery, async (querySnapshot) => {
+        const accountsMap = new Map<string, string>();
+        for (const doc of querySnapshot.docs) {
+            const accountId = doc.data().accountId;
+            if (accountId && !accountsMap.has(accountId)) {
+                try {
+                    const accountDoc = await getDoc(doc(db, "accounts", accountId));
+                    if (accountDoc.exists()) {
+                        accountsMap.set(accountId, accountDoc.data().name);
+                    } else {
+                        accountsMap.set(accountId, 'Conta Deletada');
+                    }
+                } catch {
+                     accountsMap.set(accountId, 'Conta Deletada');
+                }
+            }
+        }
+        
+        const transactionsData = querySnapshot.docs.map(doc => {
+            const data = doc.data();
+            return { 
+                id: doc.id, 
+                ...data, 
+                accountName: accountsMap.get(data.accountId) || 'Conta Desconhecida'
+            } as Transaction;
+        });
+
+        setTransactions(transactionsData);
+        setLoading(false);
+      });
+
+      return () => {
+        unsubscribeAccounts();
+        unsubscribeTransactions();
+      };
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const handleTransactionAdded = async (values: AddTransactionFormValues) => {
+    if (!user) return;
+    try {
+      await createTransaction(user.uid, values);
+      setIsDialogOpen(false);
+      toast({
+        title: "Sucesso!",
+        description: "Transação adicionada.",
+      });
+    } catch (error) {
+      console.error("Error adding document: ", error);
+      toast({
+        variant: "destructive",
+        title: "Erro ao criar transação",
+        description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
+      });
+    }
   };
+
+  const filteredTransactions = useMemo(() => {
+    return transactions.filter(transaction => {
+        const descriptionMatch = transaction.description.toLowerCase().includes(descriptionFilter.toLowerCase());
+        const typeMatch = !typeFilter || transaction.type === typeFilter;
+        const categoryMatch = !categoryFilter || transaction.category === categoryFilter;
+        return descriptionMatch && typeMatch && categoryMatch;
+    });
+  }, [transactions, descriptionFilter, typeFilter, categoryFilter]);
+
+  const allCategories = useMemo(() => {
+    return [...new Set(transactions.map(t => t.category))].sort();
+  }, [transactions]);
+
 
   return (
     <div className="flex flex-col gap-8">
@@ -140,7 +173,7 @@ export default function TransacoesPage() {
                 <DialogDescription>
                   Preencha as informações abaixo para adicionar uma nova transação.
                 </DialogDescription>
-              </Header>
+              </DialogHeader>
               <AddTransactionForm onTransactionAdded={handleTransactionAdded} accounts={accounts} />
             </DialogContent>
           </Dialog>
@@ -150,26 +183,31 @@ export default function TransacoesPage() {
       <Card>
         <CardHeader>
           <div className="flex flex-wrap items-center gap-4">
-            <Input placeholder="Filtrar por descrição..." className="max-w-sm flex-grow" />
-            <Select>
+            <Input 
+                placeholder="Filtrar por descrição..." 
+                className="max-w-sm flex-grow"
+                value={descriptionFilter}
+                onChange={(e) => setDescriptionFilter(e.target.value)}
+            />
+            <Select value={typeFilter} onValueChange={setTypeFilter}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="receita">Receita</SelectItem>
-                <SelectItem value="despesa">Despesa</SelectItem>
+                <SelectItem value="">Todos os Tipos</SelectItem>
+                <SelectItem value="Receita">Receita</SelectItem>
+                <SelectItem value="Despesa">Despesa</SelectItem>
               </SelectContent>
             </Select>
-            <Select>
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
               <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="salario">Salário</SelectItem>
-                <SelectItem value="alimentacao">Alimentação</SelectItem>
-                <SelectItem value="moradia">Moradia</SelectItem>
-                <SelectItem value="lazer">Lazer</SelectItem>
-                <SelectItem value="transporte">Transporte</SelectItem>
+                 <SelectItem value="">Todas as Categorias</SelectItem>
+                 {allCategories.map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                 ))}
               </SelectContent>
             </Select>
           </div>
@@ -187,24 +225,43 @@ export default function TransacoesPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {transactions.map((transaction) => (
-                <TableRow key={transaction.id}>
-                  <TableCell>{formatDate(transaction.date)}</TableCell>
-                  <TableCell className="font-medium">{transaction.description}</TableCell>
-                  <TableCell>{transaction.accountName}</TableCell>
-                  <TableCell><Badge variant="outline">{transaction.category}</Badge></TableCell>
-                  <TableCell>
-                    {transaction.type === "Receita" ? (
-                      <span className="text-green-600 flex items-center gap-1"><ArrowUp className="h-3 w-3" /> {transaction.type}</span>
-                    ) : (
-                      <span className="text-red-600 flex items-center gap-1"><ArrowDown className="h-3 w-3" /> {transaction.type}</span>
-                    )}
-                  </TableCell>
-                  <TableCell className={`text-right font-medium ${transaction.type === 'Receita' ? 'text-green-600' : 'text-red-600'}`}>
-                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction.amount)}
-                  </TableCell>
+              {loading ? (
+                Array.from({ length: 5 }).map((_, i) => (
+                    <TableRow key={i}>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-40" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell className="text-right"><Skeleton className="h-5 w-28 ml-auto" /></TableCell>
+                    </TableRow>
+                ))
+              ) : filteredTransactions.length > 0 ? (
+                filteredTransactions.map((transaction) => (
+                  <TableRow key={transaction.id}>
+                    <TableCell>{formatDate(transaction.date)}</TableCell>
+                    <TableCell className="font-medium">{transaction.description}</TableCell>
+                    <TableCell>{transaction.accountName}</TableCell>
+                    <TableCell><Badge variant="outline">{transaction.category}</Badge></TableCell>
+                    <TableCell>
+                      {transaction.type === "Receita" ? (
+                        <span className="text-green-600 flex items-center gap-1"><ArrowUp className="h-3 w-3" /> {transaction.type}</span>
+                      ) : (
+                        <span className="text-red-600 flex items-center gap-1"><ArrowDown className="h-3 w-3" /> {transaction.type}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className={`text-right font-medium ${transaction.type === 'Receita' ? 'text-green-600' : 'text-red-600'}`}>
+                       {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction.amount)}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                    <TableCell colSpan={6} className="text-center h-24">
+                        Nenhuma transação encontrada.
+                    </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
