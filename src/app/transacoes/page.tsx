@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc, Timestamp } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, getDocs, Timestamp } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { createTransaction, type AddTransactionFormValues } from "@/services/transactionService";
@@ -62,37 +62,36 @@ export default function TransacoesPage() {
 
   useEffect(() => {
     if (user) {
-      setLoading(true);
       const accountsQuery = query(collection(db, "accounts"), where("userId", "==", user.uid));
-      const unsubscribeAccounts = onSnapshot(accountsQuery, (querySnapshot) => {
-        const accountsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
-        setAccounts(accountsData);
-      });
+      
+      // Create a map of account IDs to names first
+      const getAccountsMap = async () => {
+        const querySnapshot = await getDocs(accountsQuery);
+        const map = new Map<string, string>();
+        const accs: Account[] = [];
+        querySnapshot.forEach((doc) => {
+          map.set(doc.id, doc.data().name);
+          accs.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(accs);
+        return map;
+      };
 
       const transactionsQuery = query(
         collection(db, "transactions"),
         where("userId", "==", user.uid),
         orderBy("date", "desc")
       );
-      
-      const unsubscribeTransactions = onSnapshot(transactionsQuery, async (querySnapshot) => {
-        const accountsMap = new Map<string, string>();
-        for (const doc of querySnapshot.docs) {
-            const accountId = doc.data().accountId;
-            if (accountId && !accountsMap.has(accountId)) {
-                try {
-                    const accountDoc = await getDoc(doc(db, "accounts", accountId));
-                    if (accountDoc.exists()) {
-                        accountsMap.set(accountId, accountDoc.data().name);
-                    } else {
-                        accountsMap.set(accountId, 'Conta Deletada');
-                    }
-                } catch {
-                     accountsMap.set(accountId, 'Conta Deletada');
-                }
-            }
+
+      let accountsMap: Map<string, string>;
+
+      const unsubscribeTransactions = onSnapshot(transactionsQuery, (querySnapshot) => {
+        if (!accountsMap) {
+          // If map is not ready, we can't process transactions yet.
+          // This case is unlikely with the new logic but good for safety.
+          return;
         }
-        
+
         const transactionsData = querySnapshot.docs.map(doc => {
             const data = doc.data();
             return { 
@@ -103,11 +102,30 @@ export default function TransacoesPage() {
         });
 
         setTransactions(transactionsData);
-        setLoading(false);
       });
 
+      // Initialize data fetching
+      const fetchData = async () => {
+        setLoading(true);
+        accountsMap = await getAccountsMap();
+        // The onSnapshot listener will now be able to use the populated accountsMap
+        // A manual trigger for the first load might be needed if onSnapshot doesn't fire immediately
+        const initialTransactionsSnapshot = await getDocs(transactionsQuery);
+        const transactionsData = initialTransactionsSnapshot.docs.map(doc => {
+          const data = doc.data();
+          return { 
+              id: doc.id, 
+              ...data, 
+              accountName: accountsMap.get(data.accountId) || 'Conta Desconhecida'
+          } as Transaction;
+        });
+        setTransactions(transactionsData);
+        setLoading(false);
+      };
+
+      fetchData();
+
       return () => {
-        unsubscribeAccounts();
         unsubscribeTransactions();
       };
     } else {
