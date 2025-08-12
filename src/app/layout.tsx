@@ -17,7 +17,6 @@ import { AddTransactionForm } from '@/components/add-transaction-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
-import { createTransaction } from '@/ai/flows/createTransactionFlow';
 import { z } from 'zod';
 import { useToast } from "@/hooks/use-toast";
 
@@ -83,10 +82,9 @@ export default function RootLayout({
   const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
-        await createTransaction({
+        await addDoc(collection(db, "transactions"), {
           ...values,
           userId: user.uid,
-          date: values.date.toISOString(),
         });
         setIsTransactionDialogOpen(false);
         toast({
@@ -98,7 +96,7 @@ export default function RootLayout({
         toast({
             variant: "destructive",
             title: "Erro ao criar transação",
-            description: "Não foi possível salvar a transação. Pode haver um problema de configuração no servidor. Por favor, tente novamente.",
+            description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
         });
       }
     }

@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc, addDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { createTransaction } from "@/ai/flows/createTransactionFlow";
 import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
 
 const addTransactionFormSchema = z.object({
   description: z.string(),
@@ -52,6 +52,7 @@ export default function TransacoesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const auth = getAuth();
   const user = auth.currentUser;
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -96,14 +97,22 @@ export default function TransacoesPage() {
   const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
-        await createTransaction({
+        await addDoc(collection(db, "transactions"), {
           ...values,
           userId: user.uid,
-          date: values.date.toISOString(),
         });
         setIsDialogOpen(false);
+         toast({
+            title: "Sucesso!",
+            description: "Transação adicionada.",
+        });
       } catch (error) {
         console.error("Error adding document: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao criar transação",
+            description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
+        });
       }
     }
   };
