@@ -9,7 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { adminDb } from '@/lib/firebase-admin';
+import { getFirestore } from 'firebase-admin/firestore';
 
 const CreateTransactionInputSchema = z.object({
   userId: z.string(),
@@ -38,11 +38,12 @@ const createTransactionFlow = ai.defineFlow(
     outputSchema: CreateTransactionOutputSchema,
   },
   async (input) => {
+    const db = getFirestore();
     const transactionData = {
       ...input,
       date: new Date(input.date), // Convert string back to Date object for Firestore
     };
-    const docRef = await adminDb.collection("transactions").add(transactionData);
+    const docRef = await db.collection("transactions").add(transactionData);
     return { transactionId: docRef.id };
   }
 );
