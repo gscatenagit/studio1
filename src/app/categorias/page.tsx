@@ -1,3 +1,5 @@
+"use client";
+
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -49,7 +51,7 @@ export default function CategoriasPage() {
             <TableBody>
               {categories.map((category) => (
                 <TableRow key={category.id}>
-                  <TableCell className="font-medium" style={{ paddingLeft: category.parent ? '2rem' : '1rem' }}>
+                  <TableCell className={`font-medium ${category.parent ? 'pl-8' : 'pl-4'}`}>
                     {category.name}
                   </TableCell>
                   <TableCell>
