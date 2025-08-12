@@ -7,10 +7,8 @@
  * - CreateTransactionOutput - The return type for the createTransaction function.
  */
 
-import '@/lib/firebase-admin';
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { getFirestore } from 'firebase-admin/firestore';
 
 const CreateTransactionInputSchema = z.object({
   userId: z.string(),
@@ -39,6 +37,17 @@ const createTransactionFlow = ai.defineFlow(
     outputSchema: CreateTransactionOutputSchema,
   },
   async (input) => {
+    // Dynamically import admin packages to avoid client-side bundling issues.
+    const admin = await import('firebase-admin');
+    const { getFirestore } = await import('firebase-admin/firestore');
+
+    // Ensure Firebase Admin is initialized.
+    if (!admin.apps.length) {
+      admin.initializeApp({
+        credential: admin.credential.applicationDefault(),
+      });
+    }
+
     const db = getFirestore();
     const transactionData = {
       ...input,
