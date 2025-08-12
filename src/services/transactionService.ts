@@ -20,21 +20,26 @@ export async function createTransaction(userId: string, data: AddTransactionForm
     throw new Error("User ID is required to create a transaction.");
   }
 
-  const validatedData = addTransactionFormSchema.parse(data);
-  const dataWithTimestamp = {
-    ...validatedData,
-    date: Timestamp.fromDate(validatedData.date),
-  };
-
   try {
-    const docRef = await addDoc(collection(db, "transactions"), {
-      ...dataWithTimestamp,
+    // Validate the input data against the schema
+    const validatedData = addTransactionFormSchema.parse(data);
+
+    // Create the object to be saved, converting the date to a Firestore Timestamp
+    const transactionToSave = {
       userId: userId,
-    });
+      description: validatedData.description,
+      amount: validatedData.amount,
+      type: validatedData.type,
+      category: validatedData.category,
+      accountId: validatedData.accountId,
+      date: Timestamp.fromDate(validatedData.date),
+    };
+
+    const docRef = await addDoc(collection(db, "transactions"), transactionToSave);
     return { id: docRef.id };
   } catch (error) {
     console.error("Error creating transaction in service: ", error);
-    // Re-throw the error to be handled by the caller
+    // Re-throw the error to be handled by the caller, which will be caught by the UI
     throw new Error("Could not create transaction.");
   }
 }
