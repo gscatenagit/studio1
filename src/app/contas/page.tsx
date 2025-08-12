@@ -35,7 +35,7 @@ export default function ContasPage() {
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button onClick={() => setIsDialogOpen(true)}>
               <PlusCircle className="mr-2 h-4 w-4" />
               Adicionar Conta
             </Button>
