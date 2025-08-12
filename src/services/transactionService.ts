@@ -11,6 +11,7 @@ const addTransactionFormSchema = z.object({
   date: z.date(),
   category: z.string(),
   accountId: z.string(),
+  userId: z.string()
 });
 
 export type AddTransactionFormValues = z.infer<typeof addTransactionFormSchema>;
