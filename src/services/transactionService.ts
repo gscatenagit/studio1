@@ -21,18 +21,15 @@ export async function createTransaction(userId: string, data: AddTransactionForm
   }
 
   try {
-    // Validate the input data against the schema
-    const validatedData = addTransactionFormSchema.parse(data);
-
-    // Create the object to be saved, converting the date to a Firestore Timestamp
+    // Manually create the object to be saved to ensure correct structure and types.
     const transactionToSave = {
       userId: userId,
-      description: validatedData.description,
-      amount: validatedData.amount,
-      type: validatedData.type,
-      category: validatedData.category,
-      accountId: validatedData.accountId,
-      date: Timestamp.fromDate(validatedData.date),
+      description: data.description,
+      amount: data.amount,
+      type: data.type,
+      category: data.category,
+      accountId: data.accountId,
+      date: Timestamp.fromDate(data.date), // Convert JavaScript Date to Firestore Timestamp
     };
 
     const docRef = await addDoc(collection(db, "transactions"), transactionToSave);
