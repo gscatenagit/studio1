@@ -46,8 +46,8 @@ const formSchema = z.object({
   category: z.string({
     required_error: "Por favor, selecione uma categoria.",
   }),
-  paidBy: z.string({
-    required_error: "Por favor, selecione quem pagou.",
+  accountId: z.string({
+    required_error: "Por favor, selecione uma conta.",
   }),
 });
 
@@ -55,7 +55,7 @@ type AddTransactionFormProps = {
   onTransactionAdded: (transaction: z.infer<typeof formSchema>) => void;
 };
 
-// Hardcoded categories based on the categorias page
+// Hardcoded categories and accounts for demonstration
 const categories = [
   "Salário",
   "Moradia",
@@ -72,6 +72,15 @@ const categories = [
   "Saúde",
   "Outros",
 ];
+
+const accounts = [
+  { id: "1", name: "Conta Corrente A (Banco X)" },
+  { id: "2", name: "Poupança A (Banco X)" },
+  { id: "3", name: "Conta Corrente B (Banco Y)" },
+  { id: "4", name: "Cartão Principal A (Mastercard)" },
+  { id: "5", name: "Cartão Viagem B (Visa)" },
+];
+
 
 export function AddTransactionForm({ onTransactionAdded }: AddTransactionFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
@@ -213,22 +222,20 @@ export function AddTransactionForm({ onTransactionAdded }: AddTransactionFormPro
                 </FormItem>
               )}
             />
-            <FormField
+             <FormField
               control={form.control}
-              name="paidBy"
+              name="accountId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Pago por</FormLabel>
+                  <FormLabel>Conta</FormLabel>
                    <Select onValueChange={field.onChange} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder="Selecione quem pagou" />
+                        <SelectValue placeholder="Selecione uma conta" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="Parceiro A">Parceiro A</SelectItem>
-                      <SelectItem value="Parceiro B">Parceiro B</SelectItem>
-                      <SelectItem value="Compartilhado">Compartilhado</SelectItem>
+                      {accounts.map(acc => <SelectItem key={acc.id} value={acc.id}>{acc.name}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />

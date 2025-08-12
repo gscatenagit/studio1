@@ -13,12 +13,20 @@ import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 
 const initialTransactions = [
-  { id: 1, date: "15/07/2024", description: "Salário Parceiro B", category: "Salário", type: "Receita", amount: "R$ 5.000,00" },
-  { id: 2, date: "14/07/2024", description: "Supermercado", category: "Alimentação", type: "Despesa", amount: "R$ 450,30" },
-  { id: 3, date: "13/07/2024", description: "Aluguel", category: "Moradia", type: "Despesa", amount: "R$ 2.500,00" },
-  { id: 4, date: "12/07/2024", description: "Restaurante", category: "Lazer", type: "Despesa", amount: "R$ 180,50" },
-  { id: 5, date: "10/07/2024", description: "Salário Parceiro A", category: "Salário", type: "Receita", amount: "R$ 6.200,00" },
-  { id: 6, date: "09/07/2024", description: "Gasolina", category: "Transporte", type: "Despesa", amount: "R$ 200,00" },
+  { id: 1, date: "15/07/2024", description: "Salário Parceiro B", category: "Salário", type: "Receita", amount: "R$ 5.000,00", account: "Conta Corrente B" },
+  { id: 2, date: "14/07/2024", description: "Supermercado", category: "Alimentação", type: "Despesa", amount: "R$ 450,30", account: "Cartão Principal A" },
+  { id: 3, date: "13/07/2024", description: "Aluguel", category: "Moradia", type: "Despesa", amount: "R$ 2.500,00", account: "Conta Corrente A" },
+  { id: 4, date: "12/07/2024", description: "Restaurante", category: "Lazer", type: "Despesa", amount: "R$ 180,50", account: "Cartão Viagem B" },
+  { id: 5, date: "10/07/2024", description: "Salário Parceiro A", category: "Salário", type: "Receita", amount: "R$ 6.200,00", account: "Conta Corrente A" },
+  { id: 6, date: "09/07/2024", description: "Gasolina", category: "Transporte", type: "Despesa", amount: "R$ 200,00", account: "Cartão Principal A" },
+];
+
+const accounts = [
+  { id: "1", name: "Conta Corrente A (Banco X)" },
+  { id: "2", name: "Poupança A (Banco X)" },
+  { id: "3", name: "Conta Corrente B (Banco Y)" },
+  { id: "4", name: "Cartão Principal A (Mastercard)" },
+  { id: "5", name: "Cartão Viagem B (Visa)" },
 ];
 
 export default function TransacoesPage() {
@@ -29,8 +37,9 @@ export default function TransacoesPage() {
     const newId = transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1;
     const formattedAmount = `R$ ${parseFloat(newTransaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
     const formattedDate = format(newTransaction.date, "dd/MM/yyyy");
+    const accountName = accounts.find(acc => acc.id === newTransaction.accountId)?.name || 'Desconhecida';
 
-    setTransactions([{ ...newTransaction, id: newId, amount: formattedAmount, date: formattedDate }, ...transactions]);
+    setTransactions([{ ...newTransaction, id: newId, amount: formattedAmount, date: formattedDate, account: accountName }, ...transactions]);
     setIsDialogOpen(false);
   };
 
@@ -99,6 +108,7 @@ export default function TransacoesPage() {
               <TableRow>
                 <TableHead>Data</TableHead>
                 <TableHead>Descrição</TableHead>
+                <TableHead>Conta</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
@@ -109,6 +119,7 @@ export default function TransacoesPage() {
                 <TableRow key={transaction.id}>
                   <TableCell>{transaction.date}</TableCell>
                   <TableCell className="font-medium">{transaction.description}</TableCell>
+                  <TableCell>{transaction.account}</TableCell>
                   <TableCell><Badge variant="outline">{transaction.category}</Badge></TableCell>
                   <TableCell>
                     {transaction.type === "Receita" ? (
