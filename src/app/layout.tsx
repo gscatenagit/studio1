@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { createTransaction } from '@/ai/flows/createTransactionFlow';
 import { z } from 'zod';
+import { useToast } from "@/hooks/use-toast";
 
 const addTransactionFormSchema = z.object({
   description: z.string(),
@@ -47,6 +48,7 @@ export default function RootLayout({
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
+  const { toast } = useToast();
 
   useEffect(() => {
     const auth = getAuth(app);
@@ -87,8 +89,17 @@ export default function RootLayout({
           date: values.date.toISOString(),
         });
         setIsTransactionDialogOpen(false);
-      } catch (error) {
+        toast({
+            title: "Sucesso!",
+            description: "Transação adicionada.",
+        });
+      } catch (error: any) {
         console.error("Error adding document: ", error);
+        toast({
+            variant: "destructive",
+            title: "Erro ao criar transação",
+            description: "Não foi possível salvar a transação. Pode haver um problema de configuração no servidor. Por favor, tente novamente.",
+        });
       }
     }
   };
