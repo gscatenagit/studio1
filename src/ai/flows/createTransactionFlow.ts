@@ -9,7 +9,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'genkit';
-import { adminDb } from '@/lib/firebase-admin';
 
 const CreateTransactionInputSchema = z.object({
   userId: z.string(),
@@ -38,6 +37,7 @@ const createTransactionFlow = ai.defineFlow(
     outputSchema: CreateTransactionOutputSchema,
   },
   async (input) => {
+    const { adminDb } = await import('@/lib/firebase-admin');
     const transactionData = {
       ...input,
       date: new Date(input.date), // Convert string back to Date object for Firestore
