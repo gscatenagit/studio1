@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc, Timestamp } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { useToast } from "@/hooks/use-toast";
 import { createTransaction, type AddTransactionFormValues } from "@/services/transactionService";
@@ -23,7 +23,7 @@ interface Transaction {
   description: string;
   amount: number;
   type: "Receita" | "Despesa";
-  date: { seconds: number; nanoseconds: number; } | Date;
+  date: Timestamp | Date;
   category: string;
   accountId: string;
   accountName?: string;
@@ -44,37 +44,40 @@ export default function TransacoesPage() {
 
   useEffect(() => {
     if (user) {
+      // Subscribe to accounts
       const accountsQuery = query(collection(db, "accounts"), where("userId", "==", user.uid));
       const unsubscribeAccounts = onSnapshot(accountsQuery, (querySnapshot) => {
-        const accountsData: Account[] = [];
-        querySnapshot.forEach((doc) => {
-          accountsData.push({ id: doc.id, ...doc.data() } as Account);
-        });
+        const accountsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Account));
         setAccounts(accountsData);
       });
 
+      // Subscribe to transactions
       const transactionsQuery = query(
         collection(db, "transactions"),
         where("userId", "==", user.uid),
         orderBy("date", "desc")
       );
-
+      
       const unsubscribeTransactions = onSnapshot(transactionsQuery, async (querySnapshot) => {
-        const transactionsData: Transaction[] = [];
-        for (const docSnapshot of querySnapshot.docs) {
-          const data = docSnapshot.data() as Omit<Transaction, 'id' | 'accountName'>;
+        const transactionsData = await Promise.all(querySnapshot.docs.map(async (docSnapshot) => {
+          const data = docSnapshot.data();
           let accountName = 'Conta Deletada';
           if (data.accountId) {
-             const accountDoc = await getDoc(doc(db, "accounts", data.accountId));
-             if (accountDoc.exists()) {
+            try {
+              const accountDoc = await getDoc(doc(db, "accounts", data.accountId));
+              if (accountDoc.exists()) {
                 accountName = accountDoc.data().name;
-             }
+              }
+            } catch (error) {
+              console.error("Error fetching account name:", error);
+            }
           }
-          transactionsData.push({ id: docSnapshot.id, ...data, accountName } as Transaction);
-        }
+          return { id: docSnapshot.id, ...data, accountName } as Transaction;
+        }));
         setTransactions(transactionsData);
       });
 
+      // Cleanup subscriptions on unmount
       return () => {
         unsubscribeAccounts();
         unsubscribeTransactions();
@@ -102,12 +105,12 @@ export default function TransacoesPage() {
     }
   };
 
-  const formatDate = (date: { seconds: number; nanoseconds: number; } | Date) => {
+  const formatDate = (date: Timestamp | Date): string => {
     if (date instanceof Date) {
       return format(date, "dd/MM/yyyy");
     }
-    if (date && date.seconds) {
-      return format(new Date(date.seconds * 1000), "dd/MM/yyyy");
+    if (date && typeof date.seconds === 'number') {
+      return format(date.toDate(), "dd/MM/yyyy");
     }
     return "Data inválida";
   };
@@ -146,10 +149,10 @@ export default function TransacoesPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <Input placeholder="Filtrar por descrição..." className="max-w-sm" />
+          <div className="flex flex-wrap items-center gap-4">
+            <Input placeholder="Filtrar por descrição..." className="max-w-sm flex-grow" />
             <Select>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
@@ -158,7 +161,7 @@ export default function TransacoesPage() {
               </SelectContent>
             </Select>
             <Select>
-              <SelectTrigger className="w-[180px]">
+              <SelectTrigger className="w-full sm:w-[180px]">
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
