@@ -43,9 +43,8 @@ const createTransactionFlow = ai.defineFlow(
 
     // Ensure Firebase Admin is initialized.
     if (!admin.apps.length) {
-      admin.initializeApp({
-        credential: admin.credential.applicationDefault(),
-      });
+      // Initialize without specific credentials to use application default credentials.
+      admin.initializeApp();
     }
 
     const db = getFirestore();
