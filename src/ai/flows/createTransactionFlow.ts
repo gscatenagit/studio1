@@ -37,22 +37,29 @@ const createTransactionFlow = ai.defineFlow(
     outputSchema: CreateTransactionOutputSchema,
   },
   async (input) => {
-    // Dynamically import admin packages to avoid client-side bundling issues.
-    const admin = await import('firebase-admin');
-    const { getFirestore } = await import('firebase-admin/firestore');
+    try {
+      // Dynamically import admin packages to avoid client-side bundling issues.
+      const admin = await import('firebase-admin');
+      const { getFirestore } = await import('firebase-admin/firestore');
 
-    // Ensure Firebase Admin is initialized.
-    if (!admin.apps.length) {
-      // Initialize without specific credentials to use application default credentials.
-      admin.initializeApp();
+      // Ensure Firebase Admin is initialized only once.
+      if (!admin.apps.length) {
+        admin.initializeApp();
+      }
+
+      const db = getFirestore();
+      
+      const transactionData = {
+        ...input,
+        date: new Date(input.date), // Convert string back to Date object for Firestore
+      };
+
+      const docRef = await db.collection("transactions").add(transactionData);
+      return { transactionId: docRef.id };
+    } catch (error: any) {
+        console.error("Error in createTransactionFlow: ", error);
+        // Re-throw the error to be caught by the caller, ensuring the flow fails explicitly.
+        throw new Error(`Failed to create transaction: ${error.message}`);
     }
-
-    const db = getFirestore();
-    const transactionData = {
-      ...input,
-      date: new Date(input.date), // Convert string back to Date object for Firestore
-    };
-    const docRef = await db.collection("transactions").add(transactionData);
-    return { transactionId: docRef.id };
   }
 );
