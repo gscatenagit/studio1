@@ -39,7 +39,10 @@ export async function createTransaction(userId: string, data: AddTransactionForm
     return { id: docRef.id };
   } catch (error) {
     console.error("Error creating transaction in service: ", error);
-    // Re-throw the error to be handled by the caller, which will be caught by the UI
-    throw new Error("Could not create transaction.");
+    // Re-throw the original error to be handled by the caller, which will be caught by the UI
+    if (error instanceof Error) {
+        throw new Error(`Could not create transaction: ${error.message}`);
+    }
+    throw new Error("An unknown error occurred while creating the transaction.");
   }
 }
