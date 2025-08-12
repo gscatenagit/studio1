@@ -13,9 +13,9 @@ const addTransactionFormSchema = z.object({
   accountId: z.string(),
 });
 
-type TransactionData = z.infer<typeof addTransactionFormSchema>;
+export type AddTransactionFormValues = z.infer<typeof addTransactionFormSchema>;
 
-export async function createTransaction(userId: string, data: TransactionData) {
+export async function createTransaction(userId: string, data: AddTransactionFormValues) {
   if (!userId) {
     throw new Error("User ID is required to create a transaction.");
   }

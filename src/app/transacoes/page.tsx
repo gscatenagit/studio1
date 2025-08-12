@@ -14,21 +14,8 @@ import { format } from "date-fns";
 import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
-import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { createTransaction } from "@/services/transactionService";
-
-const addTransactionFormSchema = z.object({
-  description: z.string(),
-  amount: z.number(),
-  type: z.enum(["Receita", "Despesa"]),
-  date: z.date(),
-  category: z.string(),
-  accountId: z.string(),
-});
-
-type AddTransactionFormValues = z.infer<typeof addTransactionFormSchema>;
-
+import { createTransaction, type AddTransactionFormValues } from "@/services/transactionService";
 
 interface Transaction {
   id: string;
