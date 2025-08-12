@@ -8,7 +8,8 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { PlusCircle } from "lucide-react";
 import { AddAccountForm } from "@/components/add-account-form";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, where, orderBy, getAuth } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, where, orderBy } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
 interface Account {
   id: string;
