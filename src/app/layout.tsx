@@ -18,7 +18,18 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { createTransaction } from '@/ai/flows/createTransactionFlow';
-import type { CreateTransactionInput } from '@/ai/flows/createTransactionFlow';
+import { z } from 'zod';
+
+const addTransactionFormSchema = z.object({
+  description: z.string(),
+  amount: z.number(),
+  type: z.enum(["Receita", "Despesa"]),
+  date: z.date(),
+  category: z.string(),
+  accountId: z.string(),
+});
+
+type AddTransactionFormValues = z.infer<typeof addTransactionFormSchema>;
 
 interface Account {
   id: string;
@@ -67,12 +78,13 @@ export default function RootLayout({
     }
   }, [loading, user, pathname, router]);
 
-  const handleTransactionAdded = async (values: Omit<CreateTransactionInput, 'userId'>) => {
+  const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
         await createTransaction({
           ...values,
           userId: user.uid,
+          date: values.date.toISOString(),
         });
         setIsTransactionDialogOpen(false);
       } catch (error) {

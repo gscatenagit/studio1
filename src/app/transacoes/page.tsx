@@ -15,7 +15,19 @@ import { db } from "@/lib/firebase";
 import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { createTransaction } from "@/ai/flows/createTransactionFlow";
-import type { CreateTransactionInput } from "@/ai/flows/createTransactionFlow";
+import { z } from "zod";
+
+const addTransactionFormSchema = z.object({
+  description: z.string(),
+  amount: z.number(),
+  type: z.enum(["Receita", "Despesa"]),
+  date: z.date(),
+  category: z.string(),
+  accountId: z.string(),
+});
+
+type AddTransactionFormValues = z.infer<typeof addTransactionFormSchema>;
+
 
 interface Transaction {
   id: string;
@@ -81,12 +93,13 @@ export default function TransacoesPage() {
     }
   }, [user]);
 
-  const handleTransactionAdded = async (values: Omit<CreateTransactionInput, 'userId'>) => {
+  const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
         await createTransaction({
           ...values,
           userId: user.uid,
+          date: values.date.toISOString(),
         });
         setIsDialogOpen(false);
       } catch (error) {
