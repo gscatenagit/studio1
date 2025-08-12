@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -11,36 +11,97 @@ import { PlusCircle, FileDown, ArrowDown, ArrowUp } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
+import { db } from "@/lib/firebase";
+import { collection, addDoc, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { getAuth } from "firebase/auth";
 
-const initialTransactions = [
-  { id: 1, date: "15/07/2024", description: "Salário Parceiro B", category: "Salário", type: "Receita", amount: "R$ 5.000,00", account: "Conta Corrente B" },
-  { id: 2, date: "14/07/2024", description: "Supermercado", category: "Alimentação", type: "Despesa", amount: "R$ 450,30", account: "Cartão Principal A" },
-  { id: 3, date: "13/07/2024", description: "Aluguel", category: "Moradia", type: "Despesa", amount: "R$ 2.500,00", account: "Conta Corrente A" },
-  { id: 4, date: "12/07/2024", description: "Restaurante", category: "Lazer", type: "Despesa", amount: "R$ 180,50", account: "Cartão Viagem B" },
-  { id: 5, date: "10/07/2024", description: "Salário Parceiro A", category: "Salário", type: "Receita", amount: "R$ 6.200,00", account: "Conta Corrente A" },
-  { id: 6, date: "09/07/2024", description: "Gasolina", category: "Transporte", type: "Despesa", amount: "R$ 200,00", account: "Cartão Principal A" },
-];
+interface Transaction {
+  id: string;
+  userId: string;
+  description: string;
+  amount: number;
+  type: "Receita" | "Despesa";
+  date: { seconds: number; nanoseconds: number; } | Date;
+  category: string;
+  accountId: string;
+  accountName?: string;
+}
 
-const accounts = [
-  { id: "1", name: "Conta Corrente A (Banco X)" },
-  { id: "2", name: "Poupança A (Banco X)" },
-  { id: "3", name: "Conta Corrente B (Banco Y)" },
-  { id: "4", name: "Cartão Principal A (Mastercard)" },
-  { id: "5", name: "Cartão Viagem B (Visa)" },
-];
+interface Account {
+  id: string;
+  name: string;
+}
 
 export default function TransacoesPage() {
-  const [transactions, setTransactions] = useState(initialTransactions);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const auth = getAuth();
+  const user = auth.currentUser;
 
-  const handleTransactionAdded = (newTransaction: any) => {
-    const newId = transactions.length > 0 ? Math.max(...transactions.map(t => t.id)) + 1 : 1;
-    const formattedAmount = `R$ ${parseFloat(newTransaction.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`;
-    const formattedDate = format(newTransaction.date, "dd/MM/yyyy");
-    const accountName = accounts.find(acc => acc.id === newTransaction.accountId)?.name || 'Desconhecida';
+  useEffect(() => {
+    if (user) {
+      const accountsQuery = query(collection(db, "accounts"), where("userId", "==", user.uid));
+      const unsubscribeAccounts = onSnapshot(accountsQuery, (querySnapshot) => {
+        const accountsData: Account[] = [];
+        querySnapshot.forEach((doc) => {
+          accountsData.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(accountsData);
+      });
 
-    setTransactions([{ ...newTransaction, id: newId, amount: formattedAmount, date: formattedDate, account: accountName }, ...transactions]);
-    setIsDialogOpen(false);
+      const transactionsQuery = query(
+        collection(db, "transactions"),
+        where("userId", "==", user.uid),
+        orderBy("date", "desc")
+      );
+
+      const unsubscribeTransactions = onSnapshot(transactionsQuery, async (querySnapshot) => {
+        const transactionsData: Transaction[] = [];
+        for (const docSnapshot of querySnapshot.docs) {
+          const data = docSnapshot.data() as Omit<Transaction, 'id' | 'accountName'>;
+          let accountName = 'Conta Deletada';
+          if (data.accountId) {
+             const accountDoc = await getDoc(doc(db, "accounts", data.accountId));
+             if (accountDoc.exists()) {
+                accountName = accountDoc.data().name;
+             }
+          }
+          transactionsData.push({ id: docSnapshot.id, ...data, accountName } as Transaction);
+        }
+        setTransactions(transactionsData);
+      });
+
+      return () => {
+        unsubscribeAccounts();
+        unsubscribeTransactions();
+      };
+    }
+  }, [user]);
+
+  const handleTransactionAdded = async (newTransactionData: Omit<Transaction, 'id' | 'userId' | 'accountName'>) => {
+    if (user) {
+      try {
+        await addDoc(collection(db, "transactions"), {
+          ...newTransactionData,
+          userId: user.uid,
+          amount: Number(newTransactionData.amount)
+        });
+        setIsDialogOpen(false);
+      } catch (error) {
+        console.error("Error adding document: ", error);
+      }
+    }
+  };
+
+  const formatDate = (date: { seconds: number; nanoseconds: number; } | Date) => {
+    if (date instanceof Date) {
+      return format(date, "dd/MM/yyyy");
+    }
+    if (date && date.seconds) {
+      return format(new Date(date.seconds * 1000), "dd/MM/yyyy");
+    }
+    return "Data inválida";
   };
 
   return (
@@ -69,7 +130,7 @@ export default function TransacoesPage() {
                   Preencha as informações abaixo para adicionar uma nova transação.
                 </DialogDescription>
               </DialogHeader>
-              <AddTransactionForm onTransactionAdded={handleTransactionAdded} />
+              <AddTransactionForm onTransactionAdded={handleTransactionAdded} accounts={accounts} />
             </DialogContent>
           </Dialog>
         </div>
@@ -117,9 +178,9 @@ export default function TransacoesPage() {
             <TableBody>
               {transactions.map((transaction) => (
                 <TableRow key={transaction.id}>
-                  <TableCell>{transaction.date}</TableCell>
+                  <TableCell>{formatDate(transaction.date)}</TableCell>
                   <TableCell className="font-medium">{transaction.description}</TableCell>
-                  <TableCell>{transaction.account}</TableCell>
+                  <TableCell>{transaction.accountName}</TableCell>
                   <TableCell><Badge variant="outline">{transaction.category}</Badge></TableCell>
                   <TableCell>
                     {transaction.type === "Receita" ? (
@@ -129,7 +190,7 @@ export default function TransacoesPage() {
                     )}
                   </TableCell>
                   <TableCell className={`text-right font-medium ${transaction.type === 'Receita' ? 'text-green-600' : 'text-red-600'}`}>
-                    {transaction.amount}
+                     {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(transaction.amount)}
                   </TableCell>
                 </TableRow>
               ))}

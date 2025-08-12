@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import type { Metadata } from 'next';
 import { useRouter, usePathname } from 'next/navigation';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { app } from '@/lib/firebase';
+import { app, db } from '@/lib/firebase';
 import './globals.css';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarInset, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
@@ -16,6 +16,12 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from '@/components/add-transaction-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
+
+interface Account {
+  id: string;
+  name: string;
+}
 
 export default function RootLayout({
   children,
@@ -24,6 +30,7 @@ export default function RootLayout({
 }>) {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const [accounts, setAccounts] = useState<Account[]>([]);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const pathname = usePathname();
@@ -39,14 +46,38 @@ export default function RootLayout({
   }, []);
 
   useEffect(() => {
+    if (user) {
+      const q = query(collection(db, "accounts"), where("userId", "==", user.uid));
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const accountsData: Account[] = [];
+        querySnapshot.forEach((doc) => {
+          accountsData.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(accountsData);
+      });
+      return () => unsubscribe();
+    }
+  }, [user]);
+
+  useEffect(() => {
     if (!loading && !user && pathname !== '/login' && pathname !== '/signup') {
       router.push('/login');
     }
   }, [loading, user, pathname, router]);
 
-  const handleTransactionAdded = (values: any) => {
-    console.log("Transaction added globally:", values);
-    setIsTransactionDialogOpen(false);
+  const handleTransactionAdded = async (values: any) => {
+    if (user) {
+      try {
+        await addDoc(collection(db, "transactions"), {
+          ...values,
+          userId: user.uid,
+          amount: Number(values.amount)
+        });
+        setIsTransactionDialogOpen(false);
+      } catch (error) {
+        console.error("Error adding document: ", error);
+      }
+    }
   };
   
   const handleLogout = () => {
@@ -195,7 +226,7 @@ export default function RootLayout({
                 Preencha as informações abaixo para adicionar uma nova transação.
               </DialogDescription>
             </DialogHeader>
-            <AddTransactionForm onTransactionAdded={handleTransactionAdded} />
+            <AddTransactionForm onTransactionAdded={handleTransactionAdded} accounts={accounts} />
           </DialogContent>
         </Dialog>
         <Toaster />

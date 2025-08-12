@@ -34,7 +34,7 @@ const formSchema = z.object({
   description: z.string().min(2, {
     message: "A descrição deve ter pelo menos 2 caracteres.",
   }),
-  amount: z.string().refine(val => !isNaN(parseFloat(val)) && parseFloat(val) > 0, {
+  amount: z.coerce.number().positive({
     message: "O valor deve ser um número positivo.",
   }),
   type: z.enum(["Receita", "Despesa"], {
@@ -51,8 +51,14 @@ const formSchema = z.object({
   }),
 });
 
+interface Account {
+  id: string;
+  name: string;
+}
+
 type AddTransactionFormProps = {
   onTransactionAdded: (transaction: z.infer<typeof formSchema>) => void;
+  accounts: Account[];
 };
 
 // Hardcoded categories and accounts for demonstration
@@ -73,22 +79,14 @@ const categories = [
   "Outros",
 ];
 
-const accounts = [
-  { id: "1", name: "Conta Corrente A (Banco X)" },
-  { id: "2", name: "Poupança A (Banco X)" },
-  { id: "3", name: "Conta Corrente B (Banco Y)" },
-  { id: "4", name: "Cartão Principal A (Mastercard)" },
-  { id: "5", name: "Cartão Viagem B (Visa)" },
-];
-
-
-export function AddTransactionForm({ onTransactionAdded }: AddTransactionFormProps) {
+export function AddTransactionForm({ onTransactionAdded, accounts }: AddTransactionFormProps) {
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       description: "",
       type: "Despesa",
       date: new Date(),
+      amount: 0,
     },
   });
 
@@ -153,7 +151,7 @@ export function AddTransactionForm({ onTransactionAdded }: AddTransactionFormPro
                 <FormItem>
                   <FormLabel>Valor</FormLabel>
                   <FormControl>
-                    <Input type="number" placeholder="R$ 0,00" {...field} />
+                    <Input type="number" step="0.01" placeholder="R$ 0,00" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
