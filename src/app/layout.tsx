@@ -1,6 +1,10 @@
 "use client";
 
+import { useEffect, useState } from 'react';
 import type { Metadata } from 'next';
+import { useRouter, usePathname } from 'next/navigation';
+import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
+import { app } from '@/lib/firebase';
 import './globals.css';
 import { SidebarProvider, Sidebar, SidebarTrigger, SidebarInset, SidebarHeader, SidebarContent, SidebarMenu, SidebarMenuItem, SidebarMenuButton, SidebarFooter } from '@/components/ui/sidebar';
 import { Toaster } from '@/components/ui/toaster';
@@ -9,13 +13,8 @@ import { LayoutDashboard, Wallet, ArrowRightLeft, GitMerge, HeartHandshake, Repe
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { useState } from 'react';
 import { AddTransactionForm } from '@/components/add-transaction-form';
-
-// export const metadata: Metadata = {
-//   title: 'Casal Próspero',
-//   description: 'Gestão financeira para casais',
-// };
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function RootLayout({
   children,
@@ -23,14 +22,60 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const pathname = usePathname();
 
-  // Dummy handler, in a real app this would likely be managed by a global state provider
+  useEffect(() => {
+    const auth = getAuth(app);
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && !user && pathname !== '/login') {
+      router.push('/login');
+    }
+  }, [loading, user, pathname, router]);
+
   const handleTransactionAdded = (values: any) => {
     console.log("Transaction added globally:", values);
     setIsTransactionDialogOpen(false);
-    // You might want to show a toast notification here
+  };
+  
+  const handleLogout = () => {
+    const auth = getAuth(app);
+    auth.signOut().then(() => {
+      router.push('/login');
+    });
   };
 
+  if (loading || (!user && pathname !== '/login')) {
+    return (
+      <html lang="pt-BR">
+        <body className="font-body antialiased bg-background">
+          <div className="flex items-center justify-center h-screen">
+            <Skeleton className="h-12 w-12 rounded-full" />
+          </div>
+        </body>
+      </html>
+    );
+  }
+  
+  if (!user) {
+    return (
+       <html lang="pt-BR">
+        <body className="font-body antialiased bg-background">
+          {children}
+        </body>
+      </html>
+    )
+  }
 
   return (
     <html lang="pt-BR">
@@ -103,15 +148,23 @@ export default function RootLayout({
                 </SidebarMenu>
               </SidebarContent>
               <SidebarFooter>
-                <SidebarMenu>
+                 <SidebarMenu>
                   <SidebarMenuItem>
-                    <SidebarMenuButton><UserCircle />Perfil</SidebarMenuButton>
+                    <div className="flex items-center gap-3 p-2">
+                      <Avatar className="h-8 w-8">
+                        <AvatarImage src={user?.photoURL || undefined} data-ai-hint="person" />
+                        <AvatarFallback>{user?.email?.[0].toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex flex-col truncate">
+                        <span className="text-sm font-semibold truncate">{user?.displayName || user?.email}</span>
+                      </div>
+                    </div>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
                     <SidebarMenuButton><Settings />Configurações</SidebarMenuButton>
                   </SidebarMenuItem>
                   <SidebarMenuItem>
-                    <SidebarMenuButton><LogOut />Sair</SidebarMenuButton>
+                    <SidebarMenuButton onClick={handleLogout}><LogOut />Sair</SidebarMenuButton>
                   </SidebarMenuItem>
                 </SidebarMenu>
               </SidebarFooter>
@@ -119,8 +172,8 @@ export default function RootLayout({
             <SidebarInset>
               <header className="flex items-center justify-between p-4 bg-background border-b sticky top-0 z-10">
                 <div className="flex items-center gap-4">
-                   <SidebarTrigger className="md:hidden" />
-                   <Logo />
+                   <SidebarTrigger />
+                   <h1 className="text-xl font-semibold tracking-tight hidden md:block">Visão Geral</h1>
                 </div>
                  <DialogTrigger asChild>
                    <Button>

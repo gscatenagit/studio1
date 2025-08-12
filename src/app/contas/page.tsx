@@ -8,10 +8,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { PlusCircle } from "lucide-react";
 import { AddAccountForm } from "@/components/add-account-form";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, orderBy } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, where, orderBy, getAuth } from "firebase/firestore";
 
 interface Account {
   id: string;
+  userId: string;
   name: string;
   bank: string;
   type: string;
@@ -21,26 +22,39 @@ interface Account {
 export default function ContasPage() {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const auth = getAuth();
+  const user = auth.currentUser;
 
   useEffect(() => {
-    const q = query(collection(db, "accounts"), orderBy("name"));
-    const unsubscribe = onSnapshot(q, (querySnapshot) => {
-      const accountsData: Account[] = [];
-      querySnapshot.forEach((doc) => {
-        accountsData.push({ id: doc.id, ...doc.data() } as Account);
+    if (user) {
+      const q = query(
+        collection(db, "accounts"),
+        where("userId", "==", user.uid),
+        orderBy("name")
+      );
+      const unsubscribe = onSnapshot(q, (querySnapshot) => {
+        const accountsData: Account[] = [];
+        querySnapshot.forEach((doc) => {
+          accountsData.push({ id: doc.id, ...doc.data() } as Account);
+        });
+        setAccounts(accountsData);
       });
-      setAccounts(accountsData);
-    });
 
-    return () => unsubscribe();
-  }, []);
+      return () => unsubscribe();
+    }
+  }, [user]);
 
-  const handleAccountAdded = async (newAccount: Omit<Account, 'id'>) => {
-    try {
-      await addDoc(collection(db, "accounts"), newAccount);
-      setIsDialogOpen(false);
-    } catch (error) {
-      console.error("Error adding document: ", error);
+  const handleAccountAdded = async (newAccountData: Omit<Account, 'id' | 'userId'>) => {
+    if (user) {
+      try {
+        await addDoc(collection(db, "accounts"), {
+          ...newAccountData,
+          userId: user.uid,
+        });
+        setIsDialogOpen(false);
+      } catch (error) {
+        console.error("Error adding document: ", error);
+      }
     }
   };
 
