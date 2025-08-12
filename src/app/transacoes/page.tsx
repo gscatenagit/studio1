@@ -52,8 +52,8 @@ export default function TransacoesPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   
   const [descriptionFilter, setDescriptionFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState("");
-  const [categoryFilter, setCategoryFilter] = useState("");
+  const [typeFilter, setTypeFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
 
 
   const auth = getAuth();
@@ -137,8 +137,8 @@ export default function TransacoesPage() {
   const filteredTransactions = useMemo(() => {
     return transactions.filter(transaction => {
         const descriptionMatch = transaction.description.toLowerCase().includes(descriptionFilter.toLowerCase());
-        const typeMatch = !typeFilter || transaction.type === typeFilter;
-        const categoryMatch = !categoryFilter || transaction.category === categoryFilter;
+        const typeMatch = typeFilter === 'all' || transaction.type === typeFilter;
+        const categoryMatch = categoryFilter === 'all' || transaction.category === categoryFilter;
         return descriptionMatch && typeMatch && categoryMatch;
     });
   }, [transactions, descriptionFilter, typeFilter, categoryFilter]);
@@ -194,7 +194,7 @@ export default function TransacoesPage() {
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Todos os Tipos</SelectItem>
+                <SelectItem value="all">Todos os Tipos</SelectItem>
                 <SelectItem value="Receita">Receita</SelectItem>
                 <SelectItem value="Despesa">Despesa</SelectItem>
               </SelectContent>
@@ -204,7 +204,7 @@ export default function TransacoesPage() {
                 <SelectValue placeholder="Categoria" />
               </SelectTrigger>
               <SelectContent>
-                 <SelectItem value="">Todas as Categorias</SelectItem>
+                 <SelectItem value="all">Todas as Categorias</SelectItem>
                  {allCategories.map(cat => (
                     <SelectItem key={cat} value={cat}>{cat}</SelectItem>
                  ))}
