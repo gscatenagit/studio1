@@ -22,6 +22,7 @@ export async function createTransaction(userId: string, data: AddTransactionForm
 
   try {
     // Manually create the object to be saved to ensure correct structure and types.
+    // This is the most reliable way to ensure the userId is included for Firestore security rules.
     const transactionToSave = {
       userId: userId,
       description: data.description,
