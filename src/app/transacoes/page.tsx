@@ -12,8 +12,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, addDoc, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
+import { createTransaction } from "@/ai/flows/createTransactionFlow";
+import type { CreateTransactionInput } from "@/ai/flows/createTransactionFlow";
 
 interface Transaction {
   id: string;
@@ -79,13 +81,12 @@ export default function TransacoesPage() {
     }
   }, [user]);
 
-  const handleTransactionAdded = async (newTransactionData: Omit<Transaction, 'id' | 'userId' | 'accountName'>) => {
+  const handleTransactionAdded = async (values: Omit<CreateTransactionInput, 'userId'>) => {
     if (user) {
       try {
-        await addDoc(collection(db, "transactions"), {
-          ...newTransactionData,
+        await createTransaction({
+          ...values,
           userId: user.uid,
-          amount: Number(newTransactionData.amount)
         });
         setIsDialogOpen(false);
       } catch (error) {

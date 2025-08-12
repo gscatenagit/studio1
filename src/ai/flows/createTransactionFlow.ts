@@ -1,0 +1,48 @@
+'use server';
+/**
+ * @fileOverview A transaction creation engine.
+ *
+ * - createTransaction - A function that handles the transaction creation process.
+ * - CreateTransactionInput - The input type for the createTransaction function.
+ * - CreateTransactionOutput - The return type for the createTransaction function.
+ */
+
+import { ai } from '@/ai/genkit';
+import { z } from 'genkit';
+import { collection, addDoc } from "firebase/firestore";
+import { db } from '@/lib/firebase';
+
+export const CreateTransactionInputSchema = z.object({
+  userId: z.string(),
+  description: z.string(),
+  amount: z.number(),
+  type: z.enum(["Receita", "Despesa"]),
+  date: z.date(),
+  category: z.string(),
+  accountId: z.string(),
+});
+export type CreateTransactionInput = z.infer<typeof CreateTransactionInputSchema>;
+
+export const CreateTransactionOutputSchema = z.object({
+  transactionId: z.string(),
+});
+export type CreateTransactionOutput = z.infer<typeof CreateTransactionOutputSchema>;
+
+export async function createTransaction(input: CreateTransactionInput): Promise<CreateTransactionOutput> {
+  return createTransactionFlow(input);
+}
+
+const createTransactionFlow = ai.defineFlow(
+  {
+    name: 'createTransactionFlow',
+    inputSchema: CreateTransactionInputSchema,
+    outputSchema: CreateTransactionOutputSchema,
+  },
+  async (input) => {
+    const docRef = await addDoc(collection(db, "transactions"), {
+      ...input,
+      date: input.date // Firestore handles Date objects correctly
+    });
+    return { transactionId: docRef.id };
+  }
+);

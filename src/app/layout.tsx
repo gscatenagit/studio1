@@ -17,6 +17,8 @@ import { AddTransactionForm } from '@/components/add-transaction-form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
+import { createTransaction } from '@/ai/flows/createTransactionFlow';
+import type { CreateTransactionInput } from '@/ai/flows/createTransactionFlow';
 
 interface Account {
   id: string;
@@ -65,13 +67,12 @@ export default function RootLayout({
     }
   }, [loading, user, pathname, router]);
 
-  const handleTransactionAdded = async (values: any) => {
+  const handleTransactionAdded = async (values: Omit<CreateTransactionInput, 'userId'>) => {
     if (user) {
       try {
-        await addDoc(collection(db, "transactions"), {
+        await createTransaction({
           ...values,
           userId: user.uid,
-          amount: Number(values.amount)
         });
         setIsTransactionDialogOpen(false);
       } catch (error) {
