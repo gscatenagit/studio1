@@ -101,8 +101,8 @@ export default function RootLayout({
           <SidebarInset>
             <header className="flex items-center justify-between p-4 bg-background border-b sticky top-0 z-10 md:hidden">
               <Logo />
-              <SidebarTrigger asChild>
-                <Button variant="ghost" size="icon"><LayoutDashboard /></Button>
+              <SidebarTrigger>
+                <LayoutDashboard />
               </SidebarTrigger>
             </header>
             <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-background">
