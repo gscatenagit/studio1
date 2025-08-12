@@ -1,7 +1,7 @@
 'use server';
 
 import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+import { collection, addDoc, Timestamp } from "firebase/firestore";
 import { z } from "zod";
 
 const addTransactionFormSchema = z.object({
@@ -21,10 +21,14 @@ export async function createTransaction(userId: string, data: AddTransactionForm
   }
 
   const validatedData = addTransactionFormSchema.parse(data);
+  const dataWithTimestamp = {
+    ...validatedData,
+    date: Timestamp.fromDate(validatedData.date),
+  };
 
   try {
     const docRef = await addDoc(collection(db, "transactions"), {
-      ...validatedData,
+      ...dataWithTimestamp,
       userId: userId,
     });
     return { id: docRef.id };
