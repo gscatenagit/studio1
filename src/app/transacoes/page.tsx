@@ -12,10 +12,11 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { AddTransactionForm } from "@/components/add-transaction-form";
 import { format } from "date-fns";
 import { db } from "@/lib/firebase";
-import { collection, onSnapshot, query, where, orderBy, doc, getDoc, addDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, where, orderBy, doc, getDoc } from "firebase/firestore";
 import { getAuth } from "firebase/auth";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
+import { createTransaction } from "@/services/transactionService";
 
 const addTransactionFormSchema = z.object({
   description: z.string(),
@@ -97,10 +98,7 @@ export default function TransacoesPage() {
   const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
-        await addDoc(collection(db, "transactions"), {
-          ...values,
-          userId: user.uid,
-        });
+        await createTransaction(user.uid, values);
         setIsDialogOpen(false);
          toast({
             title: "Sucesso!",
@@ -152,7 +150,7 @@ export default function TransacoesPage() {
                 <DialogDescription>
                   Preencha as informações abaixo para adicionar uma nova transação.
                 </DialogDescription>
-              </DialogHeader>
+              </Header>
               <AddTransactionForm onTransactionAdded={handleTransactionAdded} accounts={accounts} />
             </DialogContent>
           </Dialog>

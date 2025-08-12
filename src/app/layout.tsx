@@ -19,6 +19,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { collection, addDoc, query, where, onSnapshot } from 'firebase/firestore';
 import { z } from 'zod';
 import { useToast } from "@/hooks/use-toast";
+import { createTransaction } from '@/services/transactionService';
 
 const addTransactionFormSchema = z.object({
   description: z.string(),
@@ -82,10 +83,7 @@ export default function RootLayout({
   const handleTransactionAdded = async (values: AddTransactionFormValues) => {
     if (user) {
       try {
-        await addDoc(collection(db, "transactions"), {
-          ...values,
-          userId: user.uid,
-        });
+        await createTransaction(user.uid, values);
         setIsTransactionDialogOpen(false);
         toast({
             title: "Sucesso!",
