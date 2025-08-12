@@ -62,6 +62,7 @@ export default function Home() {
       
       // Fetch expenses for the current month and chart data
       const fetchExpenses = async () => {
+        if (!user) return;
         const now = new Date();
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         
