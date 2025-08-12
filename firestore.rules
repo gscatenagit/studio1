@@ -1,17 +1,21 @@
-
 rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Allow users to read and write their own accounts
+    // Regra para a coleção 'accounts'
     match /accounts/{accountId} {
-      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+      // Um usuário autenticado pode criar, ler, atualizar e deletar suas próprias contas.
+      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+      // Um usuário autenticado pode listar as contas que pertencem a ele.
+      allow list, get: if request.auth != null && request.query.where.userId == request.auth.uid;
     }
 
-    // Allow users to read and write their own transactions
+    // Regra para a coleção 'transactions'
     match /transactions/{transactionId} {
-      allow read, write: if request.auth != null && request.auth.uid == request.resource.data.userId;
+       // Um usuário autenticado pode criar, ler, atualizar e deletar suas próprias transações.
+      allow create, update, delete: if request.auth != null && request.resource.data.userId == request.auth.uid;
+       // Um usuário autenticado pode listar as transações que pertencem a ele.
+      allow list, get: if request.auth != null && request.query.where.userId == request.auth.uid;
     }
   }
 }
