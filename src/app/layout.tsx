@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { AddTransactionForm } from '@/components/add-transaction-form';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 export default function RootLayout({
   children,
@@ -38,7 +39,7 @@ export default function RootLayout({
   }, []);
 
   useEffect(() => {
-    if (!loading && !user && pathname !== '/login') {
+    if (!loading && !user && pathname !== '/login' && pathname !== '/signup') {
       router.push('/login');
     }
   }, [loading, user, pathname, router]);
@@ -55,7 +56,7 @@ export default function RootLayout({
     });
   };
 
-  if (loading || (!user && pathname !== '/login')) {
+  if (loading || (!user && pathname !== '/login' && pathname !== '/signup')) {
     return (
       <html lang="pt-BR">
         <body className="font-body antialiased bg-background">
