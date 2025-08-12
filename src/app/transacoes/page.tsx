@@ -100,16 +100,16 @@ export default function TransacoesPage() {
       try {
         await createTransaction(user.uid, values);
         setIsDialogOpen(false);
-         toast({
-            title: "Sucesso!",
-            description: "Transação adicionada.",
+        toast({
+          title: "Sucesso!",
+          description: "Transação adicionada.",
         });
       } catch (error) {
         console.error("Error adding document: ", error);
         toast({
-            variant: "destructive",
-            title: "Erro ao criar transação",
-            description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
+          variant: "destructive",
+          title: "Erro ao criar transação",
+          description: "Não foi possível salvar a transação. Verifique sua conexão e tente novamente.",
         });
       }
     }
