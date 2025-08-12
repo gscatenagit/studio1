@@ -17,7 +17,7 @@ const CreateTransactionInputSchema = z.object({
   description: z.string(),
   amount: z.number(),
   type: z.enum(["Receita", "Despesa"]),
-  date: z.date(),
+  date: z.string().datetime(), // Accept date as an ISO string
   category: z.string(),
   accountId: z.string(),
 });
@@ -41,7 +41,7 @@ const createTransactionFlow = ai.defineFlow(
   async (input) => {
     const docRef = await addDoc(collection(db, "transactions"), {
       ...input,
-      date: input.date // Firestore handles Date objects correctly
+      date: new Date(input.date) // Convert string back to Date object for Firestore
     });
     return { transactionId: docRef.id };
   }
